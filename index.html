@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Juego Chrome</title>
+
+<style>
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+body {
+    height: 100vh;
+    background: #FEFFC0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ---------- ENCABEZADO FIJO ---------- */
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #39c0c3;
+    padding: 8px 20px;
+    width: 100%;
+    position: fixed; /* 🔹 Fijo en la parte superior */
+    top: 0;
+    left: 0;
+    z-index: 1000;
+}
+
+header a.logo-link img {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+header a.logo-link img:hover {
+    transform: scale(1.1);
+}
+
+nav {
+    display: flex;
+}
+
+nav a {
+    text-decoration: none;
+    color: white;
+    padding: 10px 15px;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+
+
+/* ---------- CONTENEDOR DEL JUEGO ---------- */
+.contenedor {
+    width: 920px;
+    height: 280px;
+    margin-top: 100px; /* 🔹 Espacio para que no tape el header */
+    position: relative;
+    background: linear-gradient(#B7D6C7, #FFE2D1);
+    overflow: hidden;
+}
+
+.mio {
+    width: 84px;
+    height: 84px;
+    position: absolute;
+    bottom: 22px;
+    left: 42px;
+    z-index: 2;
+    background: url(mio.png) repeat-x 0px 0px;
+    background-size: 330px 84px;
+    background-position-x: 0px;
+}
+
+.mio-corriendo {
+    animation: animarmio 0.25s steps(2) infinite;
+}
+
+.mio-estrellado {
+    background-position-x: -252px;
+}
+
+.suelo {
+    width: 200%;
+    height: 42px;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    background: url(suelo.png) repeat-x 0px 0px;
+    background-size: 50% 42px;
+}
+
+.score {
+    width: 100px;
+    height: 30px;
+    position: absolute;
+    top: 5px;
+    right: 15px;
+    z-index: 10;
+    color: #d48b72;
+    font-family: verdana;
+    font-size: 30px;
+    font-weight: bold;
+    text-align: right;
+}
+
+.fantasma {
+    width: 46px;
+    height: 96px;
+    position: absolute;
+    bottom: 16px;
+    left: 600px;
+    z-index: 1;
+    background: url(fantasma.png) no-repeat;
+}
+
+.fantasma2 {
+    width: 98px;
+    height: 66px;
+    background: url(fantasma.png) no-repeat;
+}
+
+.nube {
+    width: 92px;
+    height: 26px;
+    position: absolute;
+    z-index: 0;
+    background: url(nube.png) no-repeat;
+    background-size: 92px 26px;
+}
+
+.gameOver {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    color: red;
+    font-family: sans-serif;
+    z-index: 1000;
+}
+
+@keyframes animarmio {
+    from { background-position-x: -83px; }
+    to { background-position-x: -247px; }
+}
+</style>
+</head>
+
+<body>
+<header>
+    <a href="index.html" class="logo-link">
+        <img src="dibujos/logo.png" alt="Logo">
+    </a>
+
+</header>
+
+<div class="contenedor">
+    <div class="suelo"></div>
+    <div class="mio mio-corriendo"></div>
+    <div class="score">0</div>
+    <div class="gameOver">GAME OVER</div>
+</div>
+
+<script>
+/* Tu código JS original, sin cambios */
+var time = new Date();
+var deltaTime = 0;
+if (document.readyState === "complete" || document.readyState === "interactive") {
+    setTimeout(Init, 1);
+} else {
+    document.addEventListener("DOMContentLoaded", Init);
+}
+function Init() { time = new Date(); Start(); Loop(); }
+function Loop() { deltaTime = (new Date() - time) / 1000; time = new Date(); Update(); requestAnimationFrame(Loop); }
+
+var sueloY = 22;
+var velY = 0;
+var impulso = 900;
+var gravedad = 2500;
+var MioPosX = 42;
+var MioPosY = sueloY;
+var sueloX = 0;
+var velEscenario = 1280 / 3;
+var gameVel = 1;
+var score = 0;
+var parado = false;
+var saltando = false;
+var tiempoHastaObstaculo = 2;
+var tiempoObstaculoMin = 1;
+var tiempoObstaculoMax = 1.8;
+var ObstaculoPosY = 16;
+var Obstaculos = [];
+var tiempoHastaNube = 1;
+var tiempoNubeMin = 1;
+var tiempoNubeMax = 3;
+var velNube = 0.5;
+var nubes = [];
+var minNubeY = 100;
+var maxNubeY = 180;
+var contenedor, mio, textoScore, suelo, gameOver;
+
+function Start() {
+    gameOver = document.querySelector(".gameOver");
+    suelo = document.querySelector(".suelo");
+    contenedor = document.querySelector(".contenedor");
+    textoScore = document.querySelector(".score");
+    mio = document.querySelector(".mio");
+    document.addEventListener("keydown", HandleKeyDown);
+}
+
+function HandleKeyDown(ev) {
+    if (ev.keyCode == 32) { saltar(); }
+    else if (ev.keyCode == 13 && parado) { ReiniciarJuego(); }
+}
+
+function saltar() {
+    if (MioPosY === sueloY) {
+        saltando = true;
+        velY = impulso;
+        mio.classList.remove("mio-corriendo");
+    }
+}
+
+function Update() {
+    if (parado) return;
+    MoverSuelo(); MoverMio(); DecidirCrearObstaculos(); MoverObstaculos();
+    DecidirCrearNubes(); MoverNubes(); DetectarColision();
+    velY -= gravedad * deltaTime;
+}
+
+function MoverSuelo() {
+    sueloX += CalcularDesplazamiento();
+    suelo.style.left = -(sueloX % contenedor.clientWidth) + "px";
+}
+
+function CalcularDesplazamiento() { return velEscenario * deltaTime * gameVel; }
+
+function MoverMio() {
+    MioPosY += velY * deltaTime;
+    if (MioPosY < sueloY) { TocarSuelo(); }
+    mio.style.bottom = MioPosY + "px";
+}
+
+function TocarSuelo() {
+    MioPosY = sueloY; velY = 0;
+    if (saltando) { mio.classList.add("mio-corriendo"); }
+    saltando = false;
+}
+
+function DecidirCrearObstaculos() {
+    tiempoHastaObstaculo -= deltaTime;
+    if (tiempoHastaObstaculo <= 0) { crearObstaculo(); }
+}
+
+function DecidirCrearNubes() {
+    tiempoHastaNube -= deltaTime;
+    if (tiempoHastaNube <= 0) { CrearNube(); }
+}
+
+function crearObstaculo() {
+    var Obstaculo = document.createElement("div");
+    contenedor.appendChild(Obstaculo);
+    Obstaculo.classList.add("fantasma");
+    if (Math.random() > 0.5) Obstaculo.classList.add("fantasma2");
+    Obstaculo.posX = contenedor.clientWidth;
+    Obstaculo.style.left = contenedor.clientWidth + "px";
+    Obstaculos.push(Obstaculo);
+    tiempoHastaObstaculo = tiempoObstaculoMin + Math.random() * (tiempoObstaculoMax - tiempoObstaculoMin) / gameVel;
+}
+
+function CrearNube() {
+    var nube = document.createElement("div");
+    contenedor.appendChild(nube);
+    nube.classList.add("nube");
+    nube.velocidad = velNube * (0.5 + Math.random());
+    nube.posX = contenedor.clientWidth;
+    nube.style.left = contenedor.clientWidth + "px";
+    nube.style.bottom = minNubeY + Math.random() * (maxNubeY - minNubeY) + "px";
+    nubes.push(nube);
+    tiempoHastaNube = tiempoNubeMin + Math.random() * (tiempoNubeMax - tiempoNubeMin);
+}
+
+function MoverObstaculos() {
+    for (var i = Obstaculos.length - 1; i >= 0; i--) {
+        if (Obstaculos[i].posX < -Obstaculos[i].clientWidth) {
+            Obstaculos[i].remove(); Obstaculos.splice(i, 1); GanarPuntos();
+        } else {
+            Obstaculos[i].posX -= CalcularDesplazamiento();
+            Obstaculos[i].style.left = Obstaculos[i].posX + "px";
+        }
+    }
+}
+
+function MoverNubes() {
+    for (var i = nubes.length - 1; i >= 0; i--) {
+        if (nubes[i].posX < -nubes[i].clientWidth) {
+            nubes[i].remove(); nubes.splice(i, 1);
+        } else {
+            nubes[i].posX -= CalcularDesplazamiento() * nubes[i].velocidad;
+            nubes[i].style.left = nubes[i].posX + "px";
+        }
+    }
+}
+
+function GanarPuntos() { score++; textoScore.innerText = score; }
+
+function DetectarColision() {
+    for (var i = 0; i < Obstaculos.length; i++) {
+        if (IsCollision(mio, Obstaculos[i], 10, 10, 10, 10)) {
+            GameOver(); break;
+        }
+    }
+}
+
+function IsCollision(a, b, pt, pr, pb, pl) {
+    var aRect = a.getBoundingClientRect(), bRect = b.getBoundingClientRect();
+    return !(((aRect.top + aRect.height - pb) < (bRect.top)) ||
+             (aRect.top + pt > (bRect.top + bRect.height)) ||
+             ((aRect.left + aRect.width - pr) < bRect.left) ||
+             (aRect.left + pl > (bRect.left + bRect.width)));
+}
+
+function GameOver() { Estrellarse(); gameOver.style.display = "block"; }
+function Estrellarse() { mio.classList.remove("mio-corriendo"); mio.classList.add("mio-estrellado"); parado = true; }
+
+function ReiniciarJuego() {
+    parado = false; gameVel = 1; score = 0; textoScore.innerText = score;
+    mio.classList.remove("mio-estrellado"); mio.classList.add("mio-corriendo");
+    gameOver.style.display = "none";
+    Obstaculos.forEach(o => o.remove()); Obstaculos = [];
+    nubes.forEach(n => n.remove()); nubes = [];
+    MioPosY = sueloY; velY = 0; tiempoHastaObstaculo = 2; tiempoHastaNube = 0.5;
+}
+</script>
+</body>
+</html>
